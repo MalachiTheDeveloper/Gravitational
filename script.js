@@ -33,6 +33,8 @@ let mouse = {
     leftClick: false
 }
 
+let gameOver = false;
+
 let images = {
     player: new Image(),
     crate: new Image(),
@@ -61,11 +63,16 @@ let images = {
     shield: new Image(),
     horizontalTunnel: new Image(),
     verticalTunnel: new Image(),
+    title: new Image(),
+    logo: new Image()
 }
 for(let i = 0; i < 256; i++){
     images.blocks.push(new Image());
     images.blocks[i].src = "Images/blocks/" + i + ".png";
 }
+
+images.title.src = "Images/title.png";
+images.logo.src = "Images/logo.png";
 images.player.src = "Images/player.png";
 images.bomb.src = "Images/bomb.png";
 images.breakable.src = "Images/breakable.png";
@@ -432,7 +439,11 @@ class Player {
             this.goalCountdown--;
             if(this.goalCountdown < 0){
                 currentLevel++;
-                resetLevel();
+                if(currentLevel > levels.length){
+                    gameOver = true;
+                } else{
+                    resetLevel();
+                }
             }
         }
     }
@@ -1105,6 +1116,23 @@ function resetLevel(){
     createBlocks();
 }
 
+let logoAlpha = 0;
+function drawLogo(){
+    if(gameOver){
+        logoAlpha+=0.02;
+    } else{
+        logoAlpha-=0.02;
+    }
+    if(logoAlpha < 0){
+        logoAlpha = 0;
+    }
+    if(logoAlpha > 0){
+        logoAlpha = 1;
+    }
+    ctx.globalAlpha = logoAlpha;
+    ctx.drawImage(images.logo,0,0,1200,1200);
+}
+
 function gameLoop(){
     c.clearRect(0,0,480,270);
     ctx.clearRect(0, 0, 1200, 1200);
@@ -1130,6 +1158,7 @@ function gameLoop(){
     drawGravityCharges();
     drawBlocks();
     updateBlocks();
+    drawLogo();
     requestAnimationFrame(gameLoop);
 }
 
