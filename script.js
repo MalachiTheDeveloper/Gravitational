@@ -1132,8 +1132,6 @@ function gameLoop(){
     updateBlocks();
     requestAnimationFrame(gameLoop);
 }
-resetLevel();
-requestAnimationFrame(gameLoop);
 
 function isColliding(first, second){
     return first.x < second.x + second.width &&
@@ -1367,4 +1365,8 @@ window.addEventListener("mousemove", (event) => {
     const rect = mainCanvas.getBoundingClientRect();
     mouse.x = (event.clientX - rect.left) * (480 / rect.width);
     mouse.y = (event.clientY - rect.top) * (270 / rect.height);
+})
+window.addEventListener("load", (event) => {
+    resetLevel();
+    requestAnimationFrame(gameLoop);
 })
