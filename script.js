@@ -102,7 +102,7 @@ let gravityCharges = 0;
 let resetCountdown = 60;
 let canChangeGravity = true;
 
-let currentLevel = 1;
+let currentLevel = 10;
 let levels = {
     1: {
         levelSize: 6,
@@ -271,6 +271,27 @@ let levels = {
             "bbbb   b",
             "bP== + b",
             "bbbbbbbb",
+        ]
+    },
+    10: {
+        levelSize: 15,
+        gravityCharges: 20,
+        map:[
+            "bbbbbbbbbbbbbbb",
+            "b>            b",
+            "bb +   bbbbb  b",
+            "bP  S  Bbbb>+ b",
+            "bbbbbbbbbbbbbxb",
+            "bcsSsS        b",
+            "bbbbbb        b",
+            "b   +b       +b",
+            "b             b",
+            "b b    +   +  b",
+            "b   s       LLb",
+            "bl          Lcb",
+            "bxx b       LLb",
+            "b@x+        LBb",
+            "bbbbbbbbbbbbbbb",
         ]
     },
 };
