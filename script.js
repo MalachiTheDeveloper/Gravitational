@@ -439,8 +439,9 @@ class Player {
             this.goalCountdown--;
             if(this.goalCountdown < 0){
                 currentLevel++;
-                if(currentLevel > levels.length){
+                if(currentLevel > Object.keys(levels).length){
                     gameOver = true;
+                    currentLevel--;
                 } else{
                     resetLevel();
                 }
@@ -1126,11 +1127,12 @@ function drawLogo(){
     if(logoAlpha < 0){
         logoAlpha = 0;
     }
-    if(logoAlpha > 0){
+    if(logoAlpha > 1){
         logoAlpha = 1;
     }
     ctx.globalAlpha = logoAlpha;
     ctx.drawImage(images.logo,0,0,1200,1200);
+    ctx.globalAlpha = 1;
 }
 
 function gameLoop(){
