@@ -106,7 +106,7 @@ let gravityCharges = 0;
 let resetCountdown = 60;
 let canChangeGravity = true;
 
-let currentLevel = 11;
+let currentLevel = 1;
 let levels = {
     1: {
         levelSize: 6,
