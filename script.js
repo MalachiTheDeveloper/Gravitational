@@ -64,7 +64,9 @@ let images = {
     horizontalTunnel: new Image(),
     verticalTunnel: new Image(),
     title: new Image(),
-    logo: new Image()
+    logo: new Image(),
+    barrier: new Image(),
+    reverseBarrier: new Image(),
 }
 for(let i = 0; i < 256; i++){
     images.blocks.push(new Image());
@@ -93,6 +95,8 @@ images.robot.idle.src = "Images/robot/idle.png";
 images.shield.src = "Images/shield.png";
 images.horizontalTunnel.src = "Images/horizontalTunnel.png";
 images.verticalTunnel.src = "Images/verticalTunnel.png";
+images.barrier.src = "Images/barrier.png";
+images.reverseBarrier.src = "Images/reverseBarrier.png";
 
 let doorFrame = "closed";
 let robotFrame = "idle";
@@ -102,7 +106,7 @@ let gravityCharges = 0;
 let resetCountdown = 60;
 let canChangeGravity = true;
 
-let currentLevel = 10;
+let currentLevel = 11;
 let levels = {
     1: {
         levelSize: 6,
@@ -275,7 +279,7 @@ let levels = {
     },
     10: {
         levelSize: 15,
-        gravityCharges: 20,
+        gravityCharges: 18,
         map:[
             "bbbbbbbbbbbbbbb",
             "b>            b",
@@ -292,6 +296,22 @@ let levels = {
             "bxx b       LLb",
             "b@x+        LBb",
             "bbbbbbbbbbbbbbb",
+        ]
+    },
+    11: {
+        levelSize: 10,
+        gravityCharges: 10,
+        map:[
+            "bbbbbbbbbb",
+            "blb    L@b",
+            "bHb    LLb",
+            "b        b",
+            "bs       b",
+            "b        b",
+            "b S     Pb",
+            "b    bbbbb",
+            "b   c h+lb",
+            "bbbbbbbbbb",
         ]
     },
 };
@@ -311,6 +331,7 @@ let bombs = [];
 let breakables = [];
 let shields = [];
 let tunnels = [];
+let barriers = [];
 
 class Player {
     constructor(x, y, width, height, id){
@@ -443,7 +464,7 @@ class Player {
             }
         }
 
-        if(checkSpikeCollisions(this) || checkBombCollisions(this).exploded){
+        if(checkSpikeCollisions(this) || checkBombCollisions(this).exploded || checkBarrierCollisions(this) === 1){
             if(!this.shield || checkSpikeCollisions(this)){
                 players.splice(this.playerID, 1);
             }
@@ -528,7 +549,7 @@ class Crate {
         if(!this.touchingGround){
             canChangeGravity = false;
         }
-        if(checkSpikeCollisions(this) || checkBombCollisions(this).exploded){
+        if(checkSpikeCollisions(this) || checkBombCollisions(this).exploded || checkBarrierCollisions(this) === 2){
             if(checkSpikeCollisions(this) || !this.shield){
                 crates.splice(this.crateID, 1);
                 changeCrateIDs(this.crateID);
@@ -821,6 +842,27 @@ class PhaseBlock {
         }
     }
 }
+
+class Barrier {
+    constructor(x, y, width, height, type){
+        this.x = x;
+        this.y = y; 
+        this.width = width;
+        this.height = height;
+        this.type = type;
+    }
+    draw(){
+        if(this.type === 1){
+            ctx.globalAlpha = 0.7;
+            ctx.drawImage(images.barrier, this.x, this.y, this.width, this.height);
+        } else{
+            ctx.globalAlpha = 0.5;
+            ctx.drawImage(images.reverseBarrier, this.  x, this.y, this.width, this.height);
+        }
+        ctx.globalAlpha = 1;
+    }
+}
+
 class Tunnel {
     constructor(x, y, width, height, dir){
         this.x = x;
@@ -1006,6 +1048,12 @@ function createBlocks(){
             if(tile === "l"){
                 keys.push(new Key(j * blockSize, i * blockSize, blockSize, blockSize));
             }
+            if(tile === "H"){
+                barriers.push(new Barrier(j * blockSize, i * blockSize, blockSize, blockSize, 1));
+            }
+            if(tile === "h"){
+                barriers.push(new Barrier(j * blockSize, i * blockSize, blockSize, blockSize, 2));
+            }
         }
     }
 }   
@@ -1049,6 +1097,9 @@ function drawBlocks(){
     });
     tunnels.forEach((tunnel) => {
         tunnel.draw();
+    });
+    barriers.forEach((barrier) => {
+        barrier.draw();
     });
 }
 
@@ -1128,6 +1179,7 @@ function clearBlocks(){
     bombs = [];
     breakables = [];
     shields = [];
+    barriers = [];
 }
 
 function resetLevel(){
@@ -1330,6 +1382,14 @@ function checkKeyCollisions(object){
     for(let i = 0; i < keys.length; i++){
         if(isColliding(keys[i], object)){
             keys.splice(i, 1);
+        }
+    }
+}
+
+function checkBarrierCollisions(object){
+    for(let i = 0; i < barriers.length; i++){
+        if(isColliding(barriers[i], object)){
+            return barriers[i].type;
         }
     }
 }
