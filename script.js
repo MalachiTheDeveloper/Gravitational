@@ -1180,6 +1180,7 @@ function clearBlocks(){
     breakables = [];
     shields = [];
     barriers = [];
+    tunnels = [];
 }
 
 function resetLevel(){
