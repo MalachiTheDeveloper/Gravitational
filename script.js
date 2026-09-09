@@ -67,6 +67,11 @@ let images = {
     logo: new Image(),
     barrier: new Image(),
     reverseBarrier: new Image(),
+    button: {
+        unpressed: [new Image(), new Image()],
+        pressed: [new Image(), new Image()],
+    },
+    buttonBlock: [new Image(), new Image()],
 }
 for(let i = 0; i < 256; i++){
     images.blocks.push(new Image());
@@ -91,12 +96,23 @@ images.background.src = "Images/background.png";
 images.floor.src = "Images/floor.png";
 images.resetCharge.src = "Images/resetCharge.png";
 images.door.closed.src = "Images/door/closed.png";
+for(let i = 0; i < images.button.unpressed.length; i++){
+    images.button.unpressed[i].src = "Images/button/unpressed" + (parseInt(i)+1).toString() + ".png";
+}
+for(let i = 0; i < images.button.pressed.length; i++){
+    images.button.pressed[i].src = "Images/button/pressed" + (parseInt(i)+1).toString() + ".png";
+}
+
 images.robot.idle.src = "Images/robot/idle.png";
 images.shield.src = "Images/shield.png";
 images.horizontalTunnel.src = "Images/horizontalTunnel.png";
 images.verticalTunnel.src = "Images/verticalTunnel.png";
 images.barrier.src = "Images/barrier.png";
 images.reverseBarrier.src = "Images/reverseBarrier.png";
+
+for(let i = 0; i < images.buttonBlock.length; i++){
+    images.buttonBlock[i].src = "Images/buttonBlock/" + (parseInt(i)+1).toString() + ".png";
+}
 
 let doorFrame = "closed";
 let robotFrame = "idle";
@@ -314,6 +330,30 @@ let levels = {
             "bbbbbbbbbb",
         ]
     },
+    12: {
+        levelSize: 15,
+        gravityCharges: 15,
+        buttonDirs: [Math.PI / 2],
+        buttonAssignments: [0],
+        buttonBlockAssignments: [0,0,0,0,0,0,0,0,0,0],
+        map:[
+            "bbbbbbbbbbbbbbb",
+            "b>  vvbDbvv  <b",
+            "b>s +   b    <b",
+            "b>    b b s  <b",
+            "b>  S s      <b",
+            "b>     b     <b",
+            "b> s   +   S <b",
+            "b>         S <b",
+            "b> + <bPb>   <b",
+            "bdddddbbbdddddb",
+            "b>   <b@b>   <b",
+            "b>      S   s<b",
+            "b> S  ^    ^ <b",
+            "bb^^^^b +  b^bb",
+            "bbbbbbbbbbbbbbb",
+        ]
+    },
 };
 
 let blockSize = Math.round(1200 / levels[currentLevel].levelSize);
@@ -332,6 +372,8 @@ let breakables = [];
 let shields = [];
 let tunnels = [];
 let barriers = [];
+let buttons = [];
+let buttonBlocks = [];
 
 class Player {
     constructor(x, y, width, height, id){
@@ -896,6 +938,42 @@ class Spike {
     }
 }
 
+class Button {
+    constructor(x, y, width, height, dir, id){
+        this.x = x;
+        this.y = y; 
+        this.width = width;
+        this.height = height;
+        this.dir = dir;
+        this.pressed = false;
+        this.id = id;
+    }
+    draw(){
+        ctx.save();
+        ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+        ctx.rotate(this.dir);
+        if(this.pressed){
+            ctx.drawImage(images.button.pressed[this.id], -this.width / 2, -this.height / 2, this.width, this.height);
+        } else{
+            ctx.drawImage(images.button.unpressed[this.id], -this.width / 2, -this.height / 2, this.width * 1.25, this.height);
+        }
+        ctx.restore();
+    }
+}
+
+class ButtonBlock {
+    constructor(x, y, width, height, id){
+        this.x = x;
+        this.y = y; 
+        this.width = width;
+        this.height = height;
+        this.id = id;
+    }
+    draw(){
+        ctx.drawImage(images.buttonBlock[this.id], this.x, this.y, this.width, this.height);
+    }
+}
+
 class Goal {
     constructor(x, y, width, height){
         this.x = x;
@@ -917,7 +995,7 @@ class Breakable {
         this.breakableID = id;
     }
     draw(){
-        ctx.drawImage(images.breakable, this.x, this.y, this.width, this.height)
+        ctx.drawImage(images.breakable, this.x, this.y, this.width, this.height);
     }
     update(){
         if(checkBombCollisions(this).exploded){
@@ -987,6 +1065,8 @@ function createBlocks(){
     let crateID = 0;
     let bombID = 0;
     let breakableID = 0;
+    let buttonID = 0;
+    let buttonBlockID = 0;
     for(let i = 0; i < levels[currentLevel].map.length; i++){
         for(let  j= 0; j < levels[currentLevel].map[i].length; j++){
             let tile = levels[currentLevel].map[i][j];
@@ -1054,6 +1134,14 @@ function createBlocks(){
             if(tile === "h"){
                 barriers.push(new Barrier(j * blockSize, i * blockSize, blockSize, blockSize, 2));
             }
+            if(tile === "D"){
+                buttons.push(new Button(j * blockSize, i * blockSize, blockSize, blockSize, levels[currentLevel].buttonDirs[buttonID], levels[currentLevel].buttonAssignments[buttonID]));
+                buttonID++;
+            }
+            if(tile === "d"){
+                buttonBlocks.push(new ButtonBlock(j * blockSize, i * blockSize, blockSize, blockSize, levels[currentLevel].buttonBlockAssignments[buttonBlockID]));
+                buttonBlockID++;
+            }
         }
     }
 }   
@@ -1095,11 +1183,17 @@ function drawBlocks(){
     players.forEach((player) => {
         player.draw();
     });
-    tunnels.forEach((tunnel) => {
-        tunnel.draw();
+    buttons.forEach((button) => {
+        button.draw();
+    });
+    buttonBlocks.forEach((buttonBlock) => {
+        buttonBlock.draw();
     });
     barriers.forEach((barrier) => {
         barrier.draw();
+    });
+    tunnels.forEach((tunnel) => {
+        tunnel.draw();
     });
 }
 
@@ -1107,6 +1201,22 @@ function updateBlocks(){
     canChangeGravity = true;
     if(keys.length === 0){
         locks = [];
+    }
+    let breaking;
+    for(let i = 0; i < 10; i++){
+        breaking = true
+        for(let j = 0; j < buttons.length; j++){
+            if(buttons[j].id === i && !buttons[j].pressed){
+                breaking = false;
+            }
+        }
+        if(breaking){
+            for(let j = buttonBlocks.length - 1; j >= 0; j--){
+                if(buttonBlocks[j].id === i){
+                    buttonBlocks.splice(j, 1);
+                }
+            }
+        }
     }
     for(let i = 0; i < crates.length; i++){
         if(crates[i].update(i)){
@@ -1181,6 +1291,8 @@ function clearBlocks(){
     shields = [];
     barriers = [];
     tunnels = [];
+    buttons = [];
+    buttonBlocks = [];
 }
 
 function resetLevel(){
@@ -1258,6 +1370,10 @@ function checkSolidCollisions(object){
         return true;
     } else if(checkBreakableCollisions(object)){
         return true;
+    } else if(checkButtonBlockCollisions(object)){
+        return true;
+    } else if(checkButtonCollisions(object)){
+        return true;
     } else if(checkBombCollisions(object)){
         if(!checkBombCollisions(object).exploded){
             return true;
@@ -1317,9 +1433,28 @@ function checkSpikeCollisions(object){
     return false;
 }
 
+function checkButtonBlockCollisions(object){
+    for(let i = 0; i < buttonBlocks.length; i++){
+        if(isColliding(buttonBlocks[i], object)){
+            return true;
+        }
+    }
+    return false;
+}
+
 function checkLockCollisions(object){
     for(let i = 0; i < locks.length; i++){
         if(isColliding(locks[i], object)){
+            return true;
+        }
+    }
+    return false;
+}
+
+function checkButtonCollisions(object){
+    for(let i = 0; i < buttons.length; i++){
+        if(isColliding(buttons[i], object)){
+            buttons[i].pressed = true;
             return true;
         }
     }
@@ -1472,6 +1607,10 @@ window.addEventListener("mouseup", (e) => {
     if(e.button === 0){
         mouse.leftClick = false;
     }
+})
+
+window.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
 })
 
 window.addEventListener("mousemove", (event) => {
