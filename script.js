@@ -72,6 +72,9 @@ let images = {
         pressed: [new Image(), new Image()],
     },
     buttonBlock: [new Image(), new Image()],
+    unpressedPressurePlate: new Image(),
+    pressedPressurePlate: new Image(),
+    pressurePlateBlock: new Image(),
 }
 for(let i = 0; i < 256; i++){
     images.blocks.push(new Image());
@@ -109,6 +112,9 @@ images.horizontalTunnel.src = "Images/horizontalTunnel.png";
 images.verticalTunnel.src = "Images/verticalTunnel.png";
 images.barrier.src = "Images/barrier.png";
 images.reverseBarrier.src = "Images/reverseBarrier.png";
+images.unpressedPressurePlate.src = "Images/unpressedPressurePlate.png";
+images.pressedPressurePlate.src = "Images/pressedPressurePlate.png";
+images.pressurePlateBlock.src = "Images/pressurePlateBlock.png";
 
 for(let i = 0; i < images.buttonBlock.length; i++){
     images.buttonBlock[i].src = "Images/buttonBlock/" + (parseInt(i)+1).toString() + ".png";
@@ -171,24 +177,25 @@ let levels = {
         ]
     },
     4: {
-        levelSize: 15,
+        levelSize: 16,
         gravityCharges: 5,
         map:[
-            "bbbbbbbbbbbbbbb",
-            "bPc  +  +   S<b",
-            "bb          s<b",
-            "bbb          <b",
-            "b>           <b",
-            "b> S  +      <b",
-            "b> s       s <b",
-            "b>        S  <b",
-            "b>  s      s <b",
-            "b>S + + + +  <b",
-            "b>         + <b",
-            "b> S      ++S<b",
-            "b> ^@^   s   <b",
-            "bb^bbb^^^^^^^bb",
-            "bbbbbbbbbbbbbbb",
+            "bbbbbbbbbbbbbbbb",
+            "bvvvvvvvvvvvvvbb",
+            "bPc  +  +    S<b",
+            "bb           s<b",
+            "bbb           <b",
+            "b>            <b",
+            "b> S  +       <b",
+            "b> s        s <b",
+            "b>         S  <b",
+            "b>  s       s <b",
+            "b>S + + +   + <b",
+            "b>          + <b",
+            "b> S       ++S<b",
+            "b> ^@^    s   <b",
+            "bb^bbb^^^^^^^^bb",
+            "bbbbbbbbbbbbbbbb",
         ]
     },
     5: {
@@ -354,6 +361,23 @@ let levels = {
             "bbbbbbbbbbbbbbb",
         ]
     },
+    13: {
+        levelSize: 8,
+        gravityCharges: 9,
+        buttonDirs: [Math.PI],
+        buttonAssignments: [0],
+        buttonBlockAssignments: [0],
+        map:[
+            "bbbbbbbb",
+            "b    ]@b",
+            "b    bbb",
+            "b    cPb",
+            "b  bbbbb",
+            "b     [b",
+            "b bbbbbb",
+            "bbbbbbbb",
+        ]
+    },
 };
 
 let blockSize = Math.round(1200 / levels[currentLevel].levelSize);
@@ -374,6 +398,8 @@ let tunnels = [];
 let barriers = [];
 let buttons = [];
 let buttonBlocks = [];
+let pressurePlates = [];
+let pressurePlateBlocks = [];
 
 class Player {
     constructor(x, y, width, height, id){
@@ -961,6 +987,29 @@ class Button {
     }
 }
 
+class PressurePlate {
+    constructor(x, y, width, height, dir, id){
+        this.x = x;
+        this.y = y; 
+        this.width = width;
+        this.height = height;
+        this.dir = dir;
+        this.pressed = false;
+        this.id = id;
+    }
+    draw(){
+        ctx.save();
+        ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+        ctx.rotate(this.dir);
+        if(this.pressed){
+            ctx.drawImage(images.pressedPressurePlate, -this.width / 2, -this.height / 2, this.width, this.height);
+        } else{
+            ctx.drawImage(images.unpressedPressurePlate, -this.width / 2, -this.height / 2, this.width * 1.0625, this.height);
+        }
+        ctx.restore();
+    }
+}
+
 class ButtonBlock {
     constructor(x, y, width, height, id){
         this.x = x;
@@ -971,6 +1020,22 @@ class ButtonBlock {
     }
     draw(){
         ctx.drawImage(images.buttonBlock[this.id], this.x, this.y, this.width, this.height);
+    }
+}
+
+class PressurePlateBlock {
+    constructor(x, y, width, height, id){
+        this.x = x;
+        this.y = y; 
+        this.width = width;
+        this.height = height;
+        this.id = id;
+        this.active = true;
+    }
+    draw(){
+        if(this.active){
+            ctx.drawImage(images.pressurePlateBlock, this.x, this.y, this.width, this.height);
+        }
     }
 }
 
@@ -1068,7 +1133,7 @@ function createBlocks(){
     let buttonID = 0;
     let buttonBlockID = 0;
     for(let i = 0; i < levels[currentLevel].map.length; i++){
-        for(let  j= 0; j < levels[currentLevel].map[i].length; j++){
+        for(let  j = 0; j < levels[currentLevel].map[i].length; j++){
             let tile = levels[currentLevel].map[i][j];
             if(tile === "b"){
                 blocks.push(new Block(j * blockSize, i * blockSize, blockSize, blockSize));
@@ -1142,11 +1207,25 @@ function createBlocks(){
                 buttonBlocks.push(new ButtonBlock(j * blockSize, i * blockSize, blockSize, blockSize, levels[currentLevel].buttonBlockAssignments[buttonBlockID]));
                 buttonBlockID++;
             }
+            if(tile === "["){
+                pressurePlates.push(new PressurePlate(j * blockSize, i * blockSize, blockSize, blockSize, levels[currentLevel].buttonDirs[buttonID], levels[currentLevel].buttonAssignments[buttonID]));
+                buttonID++;
+            }
+            if(tile === "]"){
+                pressurePlateBlocks.push(new PressurePlateBlock(j * blockSize, i * blockSize, blockSize, blockSize, levels[currentLevel].buttonBlockAssignments[buttonBlockID]));
+                buttonBlockID++;
+            }
         }
     }
 }   
 
 function drawBlocks(){
+    pressurePlates.forEach((pressurePlate) => {
+        pressurePlate.draw();
+    });
+    pressurePlateBlocks.forEach((pressurePlateBlock) => {
+        pressurePlateBlock.draw();
+    });
     phaseBlocks.forEach((phaseBlock) => {
         phaseBlock.draw();
     });
@@ -1197,11 +1276,7 @@ function drawBlocks(){
     });
 }
 
-function updateBlocks(){
-    canChangeGravity = true;
-    if(keys.length === 0){
-        locks = [];
-    }
+function updateButtons(){
     let breaking;
     for(let i = 0; i < 10; i++){
         breaking = true
@@ -1218,6 +1293,33 @@ function updateBlocks(){
             }
         }
     }
+
+    pressurePlateBlocks.forEach((pressurePlateBlock) => {
+        pressurePlateBlock.active = true;
+    })
+    for(let i = 0; i < 10; i++){
+        breaking = true
+        for(let j = 0; j < pressurePlates.length; j++){
+            if(pressurePlates[j].id === i && !pressurePlates[j].pressed){
+                breaking = false;
+            }
+        }
+        if(breaking){
+            for(let j = pressurePlateBlocks.length - 1; j >= 0; j--){
+                if(pressurePlateBlocks[j].id === i){
+                    pressurePlateBlocks[j].active = false;
+                }
+            }
+        }
+    }
+}
+
+function updateBlocks(){
+    canChangeGravity = true;
+    if(keys.length === 0){
+        locks = [];
+    }
+    //updateButtons();
     for(let i = 0; i < crates.length; i++){
         if(crates[i].update(i)){
             i--;
@@ -1293,6 +1395,8 @@ function clearBlocks(){
     tunnels = [];
     buttons = [];
     buttonBlocks = [];
+    pressurePlateBlocks = [];
+    pressurePlates = [];
 }
 
 function resetLevel(){
@@ -1342,10 +1446,14 @@ function gameLoop(){
             resetCountdown = 60;
         }
     }
+    updateButtons();
+    pressurePlates.forEach((pressurePlate) => {
+        pressurePlate.pressed = false;
+    })
     drawAndCheckResetCharge();
     drawGravityCharges();
-    drawBlocks();
     updateBlocks();
+    drawBlocks();
     drawLogo();
     requestAnimationFrame(gameLoop);
 }
@@ -1373,6 +1481,10 @@ function checkSolidCollisions(object){
     } else if(checkButtonBlockCollisions(object)){
         return true;
     } else if(checkButtonCollisions(object)){
+        return true;
+    } else if(checkPressurePlateBlockCollisions(object)){
+        return true;
+    } else if(checkPressurePlateCollisions(object)){
         return true;
     } else if(checkBombCollisions(object)){
         if(!checkBombCollisions(object).exploded){
@@ -1442,6 +1554,15 @@ function checkButtonBlockCollisions(object){
     return false;
 }
 
+function checkPressurePlateBlockCollisions(object){
+    for(let i = 0; i < pressurePlateBlocks.length; i++){
+        if(isColliding(pressurePlateBlocks[i], object) && pressurePlateBlocks[i].active){
+            return true;
+        }
+    }
+    return false;
+}
+
 function checkLockCollisions(object){
     for(let i = 0; i < locks.length; i++){
         if(isColliding(locks[i], object)){
@@ -1455,6 +1576,16 @@ function checkButtonCollisions(object){
     for(let i = 0; i < buttons.length; i++){
         if(isColliding(buttons[i], object)){
             buttons[i].pressed = true;
+            return true;
+        }
+    }
+    return false;
+}
+
+function checkPressurePlateCollisions(object){
+    for(let i = 0; i < pressurePlates.length; i++){
+        if(isColliding(pressurePlates[i], object)){
+            pressurePlates[i].pressed = true;
             return true;
         }
     }
