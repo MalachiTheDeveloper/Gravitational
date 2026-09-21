@@ -75,10 +75,17 @@ let images = {
     unpressedPressurePlate: new Image(),
     pressedPressurePlate: new Image(),
     pressurePlateBlock: new Image(),
+    mine: new Image(),
+    timedBlock: []
 }
 for(let i = 0; i < 256; i++){
     images.blocks.push(new Image());
     images.blocks[i].src = "Images/blocks/" + i + ".png";
+}
+
+for(let i = 1; i <= 50; i++){
+    images.timedBlock.push(new Image());
+    images.timedBlock[i-1].src = "Images/timedBlock/" + i + ".png";
 }
 
 images.title.src = "Images/title.png";
@@ -115,6 +122,7 @@ images.reverseBarrier.src = "Images/reverseBarrier.png";
 images.unpressedPressurePlate.src = "Images/unpressedPressurePlate.png";
 images.pressedPressurePlate.src = "Images/pressedPressurePlate.png";
 images.pressurePlateBlock.src = "Images/pressurePlateBlock.png";
+images.mine.src = "Images/mine.png";
 
 for(let i = 0; i < images.buttonBlock.length; i++){
     images.buttonBlock[i].src = "Images/buttonBlock/" + (parseInt(i)+1).toString() + ".png";
@@ -378,12 +386,86 @@ let levels = {
             "bbbbbbbb",
         ]
     },
+    14: {
+        levelSize: 9,
+        gravityCharges: 9,
+        buttonDirs: [Math.PI],
+        buttonAssignments: [0],
+        buttonBlockAssignments: [0],
+        map:[
+            "bbbbbbbbb",
+            "b  cbbbbb",
+            "b   +  Pb",
+            "bs  bbbbb",
+            "bc  ooo@b",
+            "bS  bbbbb",
+            "b   +  cb",
+            "b   bbbbb",
+            "bbbbbbbbb",
+        ]
+    },
+    15: {
+        levelSize: 9,
+        gravityCharges: 10,
+        buttonDirs: [Math.PI],
+        buttonAssignments: [0],
+        buttonBlockAssignments: [0],
+        timedBlockAssignments: [10,10,10,10,10,10,10,10],
+        map:[
+            "bbbbbbbbb",
+            "b     bbb",
+            "b @  |  b",
+            "b       b",
+            "b  ttt  b",
+            "b  tct  b",
+            "b  tttb b",
+            "bP +bb  b",
+            "bbbbbbbbb",
+        ]
+    },
+    16: {
+        levelSize: 29,
+        gravityCharges: 100,
+        buttonAssignments: [0],
+        buttonDirs: [Math.PI],
+        buttonBlockAssignments: [0,0,0,0,0,0,0,0,0,0,0,0,0],
+        map:[
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bPL           b             b",
+            "bLL           b             b",
+            "b             b             b",
+            "b             b             b",
+            "b             b        bbb  b",
+            "b             b         Db  b",
+            "b             b        bbb  b",
+            "b             b             b",
+            "b             b             b",
+            "b             b             b",
+            "b             b             b",
+            "b             b             b",
+            "b             L             b",
+            "bbbbbbbbbbbbbb@dddddddddddddb",
+            "blx     b     b             b",
+            "bxx         s b             b",
+            "b       ===   b             b",
+            "bS            b             b",
+            "b             b             b",
+            "b             b             b",
+            "b            Bb             b",
+            "b           bbb             b",
+            "b      S     <b             b",
+            "bS         xxxb             b",
+            "b          xBUb             b",
+            "bxxxxxxxxxxxxxb             b",
+            "bc     B     cb             b",
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        ]
+    } 
 };
 
 let blockSize = Math.round(1200 / levels[currentLevel].levelSize);
 
 let blocks = [];
-let players = [];
 let crates = [];
 let goals = [];
 let bubbles = [];
@@ -400,9 +482,11 @@ let buttons = [];
 let buttonBlocks = [];
 let pressurePlates = [];
 let pressurePlateBlocks = [];
+let mines = [];
+let timedBlocks = [];
 
 class Player {
-    constructor(x, y, width, height, id){
+    constructor(x, y, width, height){
         this.x = x;
         this.y = y; 
         this.width = width;
@@ -420,149 +504,160 @@ class Player {
             d: true
         };
         this.goalCountdown = 60;
-        this.playerID = id;
         this.shield = false;
+        this.dead = false;
+        this.isPlayer = true;
     }
     draw(){
-        ctx.drawImage(images.player, this.x, this.y, this.width, this.height)
-        if(this.shield){
-            ctx.fillStyle = "rgb(0,255,255)";
-            ctx.globalAlpha = 0.15;
-            ctx.fillRect(this.x, this.y, this.width, this.height);
-            ctx.globalAlpha = 1;
+        if(!this.dead){
+            ctx.drawImage(images.player, this.x, this.y, this.width, this.height)
+            if(this.shield){
+                ctx.fillStyle = "rgb(0,255,255)";
+                ctx.globalAlpha = 0.15;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                ctx.globalAlpha = 1;
+            }
         }
     }
     update(){
-        if(!this.touchingGround){
-            canChangeGravity = false;
-        }
-        if((canChangeGravity || this.isFirstMove) && gravityCharges > 0){
-            if(((key.left && this.keyChecks.left === true) || (key.a && this.keyChecks.a === true)) && (gravity[0] !== -1)){
-                gravity = [-1, 0];
-                this.isFirstMove = false;
-                gravityCharges--;
-                changePhaseBlocks();
+        if(!this.dead){
+            if(!this.touchingGround){
+                canChangeGravity = false;
             }
-            if(((key.right && this.keyChecks.right === true) || (key.d && this.keyChecks.d === true)) && (gravity[0] !== 1)){
-                gravity = [1, 0];
-                this.isFirstMove = false;
-                gravityCharges--;
-                changePhaseBlocks();
+            if((canChangeGravity || this.isFirstMove) && gravityCharges > 0){
+                if(((key.left && this.keyChecks.left === true) || (key.a && this.keyChecks.a === true)) && (gravity[0] !== -1)){
+                    gravity = [-1, 0];
+                    this.isFirstMove = false;
+                    gravityCharges--;
+                    changePhaseBlocks();
+                    decreaseTimedBlocks();
+                }
+                if(((key.right && this.keyChecks.right === true) || (key.d && this.keyChecks.d === true)) && (gravity[0] !== 1)){
+                    gravity = [1, 0];
+                    this.isFirstMove = false;
+                    gravityCharges--;
+                    changePhaseBlocks();
+                    decreaseTimedBlocks();
+                }
+                if(((key.up && this.keyChecks.up === true) || (key.w && this.keyChecks.w === true)) && (gravity[1] !== -1)){
+                    gravity = [0, -1];
+                    this.isFirstMove = false;
+                    gravityCharges--;
+                    changePhaseBlocks();
+                    decreaseTimedBlocks();
+                }
+                if(((key.down && this.keyChecks.down === true) || (key.s && this.keyChecks.s === true))  && (gravity[1] !== 1)){
+                    gravity = [0, 1];
+                    this.isFirstMove = false;
+                    gravityCharges--;
+                    changePhaseBlocks();
+                    decreaseTimedBlocks();
+                }
             }
-            if(((key.up && this.keyChecks.up === true) || (key.w && this.keyChecks.w === true)) && (gravity[1] !== -1)){
-                gravity = [0, -1];
-                this.isFirstMove = false;
-                gravityCharges--;
-                changePhaseBlocks();
+            if(key.left){
+                this.keyChecks.left = false;
+            } else{
+                this.keyChecks.left = true;
             }
-            if(((key.down && this.keyChecks.down === true) || (key.s && this.keyChecks.s === true))  && (gravity[1] !== 1)){
-                gravity = [0, 1];
-                this.isFirstMove = false;
-                gravityCharges--;
-                changePhaseBlocks();
+            if(key.right){
+                this.keyChecks.right = false;
+            } else{
+                this.keyChecks.right = true;
             }
-        }
-        if(key.left){
-            this.keyChecks.left = false;
-        } else{
-            this.keyChecks.left = true;
-        }
-        if(key.right){
-            this.keyChecks.right = false;
-        } else{
-            this.keyChecks.right = true;
-        }
-        if(key.up){
-            this.keyChecks.up = false;
-        } else{
-            this.keyChecks.up = true;
-        }
-        if(key.down){
-            this.keyChecks.down = false;
-        } else{
-            this.keyChecks.down = true;
-        }
-        if(key.w){
-            this.keyChecks.w = false;
-        } else{
-            this.keyChecks.w = true;
-        }
-        if(key.a){
-            this.keyChecks.a = false;
-        } else{
-            this.keyChecks.a = true;
-        }
-        if(key.s){
-            this.keyChecks.s = false;
-        } else{
-            this.keyChecks.s = true;
-        }
-        if(key.d){
-            this.keyChecks.d = false;
-        } else{
-            this.keyChecks.d = true;
-        }
-        if(!checkTunnelCollisions(this)){
-            this.x += gravity[0] * Math.round(blockSize / 3);
-            this.y += gravity[1] * Math.round(blockSize / 3);
-            this.touchingGround = false;
-            if(checkSolidCollisions(this)){
-                this.touchingGround = true;
-                if(gravity[0] === 0){
-                    if(gravity[1] === -1){
-                        while(checkSolidCollisions(this)){
-                            this.y++;
+            if(key.up){
+                this.keyChecks.up = false;
+            } else{
+                this.keyChecks.up = true;
+            }
+            if(key.down){
+                this.keyChecks.down = false;
+            } else{
+                this.keyChecks.down = true;
+            }
+            if(key.w){
+                this.keyChecks.w = false;
+            } else{
+                this.keyChecks.w = true;
+            }
+            if(key.a){
+                this.keyChecks.a = false;
+            } else{
+                this.keyChecks.a = true;
+            }
+            if(key.s){
+                this.keyChecks.s = false;
+            } else{
+                this.keyChecks.s = true;
+            }
+            if(key.d){
+                this.keyChecks.d = false;
+            } else{
+                this.keyChecks.d = true;
+            }
+            if(!checkTunnelCollisions(this)){
+                this.x += gravity[0] * Math.round(blockSize / 3);
+                this.y += gravity[1] * Math.round(blockSize / 3);
+                this.touchingGround = false;
+                if(checkSolidCollisions(this)){
+                    this.touchingGround = true;
+                    if(gravity[0] === 0){
+                        if(gravity[1] === -1){
+                            while(checkSolidCollisions(this)){
+                                this.y++;
+                            }
+                        } else{
+                            while(checkSolidCollisions(this)){
+                                this.y--;
+                            }
                         }
                     } else{
-                        while(checkSolidCollisions(this)){
-                            this.y--;
-                        }
-                    }
-                } else{
-                    if(gravity[0] === -1){
-                        while(checkSolidCollisions(this)){
-                            this.x++;
-                        }
-                    } else{
-                        while(checkSolidCollisions(this)){
-                            this.x--;
+                        if(gravity[0] === -1){
+                            while(checkSolidCollisions(this)){
+                                this.x++;
+                            }
+                        } else{
+                            while(checkSolidCollisions(this)){
+                                this.x--;
+                            }
                         }
                     }
                 }
             }
-        }
 
-        if(checkSpikeCollisions(this) || checkBombCollisions(this).exploded || checkBarrierCollisions(this) === 1){
-            if(!this.shield || checkSpikeCollisions(this)){
-                players.splice(this.playerID, 1);
+            if(checkSpikeCollisions(this) || checkBombCollisions(this).exploded || checkBarrierCollisions(this) === 1 || checkMineCollisions(this)){
+                if(!this.shield || checkSpikeCollisions(this)){
+                    this.dead = true;
+                }
+                this.shield = false;
             }
-            this.shield = false;
-        }
 
-        checkBubbleCollisions(this);
-        checkKeyCollisions(this);
-        checkShieldCollisions(this)
-        
-        if(checkGoalCollisions(this)){
-            this.x = checkGoalCollisions(this).x;
-            this.y = checkGoalCollisions(this).y;
-            this.goalCountdown--;
-            if(this.goalCountdown < 0){
-                currentLevel++;
-                if(currentLevel > Object.keys(levels).length){
-                    gameOver = true;
-                    currentLevel--;
-                } else{
-                    resetLevel();
+            checkBubbleCollisions(this);
+            checkKeyCollisions(this);
+            checkShieldCollisions(this)
+            
+            if(checkGoalCollisions(this)){
+                this.x = checkGoalCollisions(this).x;
+                this.y = checkGoalCollisions(this).y;
+                this.goalCountdown--;
+                if(this.goalCountdown < 0){
+                    currentLevel++;
+                    if(currentLevel > Object.keys(levels).length){
+                        gameOver = true;
+                        currentLevel--;
+                    } else{
+                        resetLevel();
+                    }
                 }
             }
         }
     }
 }
 
+let player = new Player(20, 20, blockSize, blockSize);
+
 class Crate {
     constructor(x, y, width, height, id){
-        this.x = x;
+        this.x = x; 
         this.y = y; 
         this.width = width;
         this.height = height; 
@@ -617,7 +712,7 @@ class Crate {
         if(!this.touchingGround){
             canChangeGravity = false;
         }
-        if(checkSpikeCollisions(this) || checkBombCollisions(this).exploded || checkBarrierCollisions(this) === 2){
+        if(checkSpikeCollisions(this) || checkBombCollisions(this).exploded || checkBarrierCollisions(this) === 2 || checkMineCollisions(this)){
             if(checkSpikeCollisions(this) || !this.shield){
                 crates.splice(this.crateID, 1);
                 changeCrateIDs(this.crateID);
@@ -1023,6 +1118,33 @@ class ButtonBlock {
     }
 }
 
+class TimedBlock {
+    constructor(x, y, width, height, time){
+        this.x = x;
+        this.y = y; 
+        this.width = width;
+        this.height = height;
+        this.time = time;
+    }
+    draw(){
+        if(this.time > 0){
+            ctx.drawImage(images.timedBlock[this.time - 1], this.x, this.y, this.width, this.height);
+        }
+    }
+}
+
+class Mine {
+    constructor(x, y, width, height){
+        this.x = x;
+        this.y = y; 
+        this.width = width;
+        this.height = height;
+    }
+    draw(){
+        ctx.drawImage(images.mine, this.x, this.y, this.width, this.height);
+    }
+}
+
 class PressurePlateBlock {
     constructor(x, y, width, height, id){
         this.x = x;
@@ -1126,12 +1248,12 @@ function drawGravityCharges(){
 }
 
 function createBlocks(){
-    let playerID = 0;
     let crateID = 0;
     let bombID = 0;
     let breakableID = 0;
     let buttonID = 0;
     let buttonBlockID = 0;
+    let timedBlockID = 0;
     for(let i = 0; i < levels[currentLevel].map.length; i++){
         for(let  j = 0; j < levels[currentLevel].map[i].length; j++){
             let tile = levels[currentLevel].map[i][j];
@@ -1151,8 +1273,7 @@ function createBlocks(){
                 spikes.push(new Spike(j * blockSize, i * blockSize, blockSize, blockSize, Math.PI));
             }
             if(tile === "P"){
-                players.push(new Player(j * blockSize, i * blockSize, blockSize, blockSize, playerID));
-                playerID++;
+                player = new Player(j * blockSize, i * blockSize, blockSize, blockSize);
             }
             if(tile === "c"){
                 crates.push(new Crate(j * blockSize, i * blockSize, blockSize, blockSize, crateID));
@@ -1190,6 +1311,10 @@ function createBlocks(){
                 breakables.push(new Breakable(j * blockSize, i * blockSize, blockSize, blockSize, breakableID));
                 breakableID++;
             }
+            if(tile === "t"){
+                timedBlocks.push(new TimedBlock(j * blockSize, i * blockSize, blockSize, blockSize, levels[currentLevel].timedBlockAssignments[timedBlockID]));
+                timedBlockID++;
+            }
             if(tile === "l"){
                 keys.push(new Key(j * blockSize, i * blockSize, blockSize, blockSize));
             }
@@ -1215,6 +1340,9 @@ function createBlocks(){
                 pressurePlateBlocks.push(new PressurePlateBlock(j * blockSize, i * blockSize, blockSize, blockSize, levels[currentLevel].buttonBlockAssignments[buttonBlockID]));
                 buttonBlockID++;
             }
+            if(tile === "o"){
+                mines.push(new Mine(j * blockSize, i * blockSize, blockSize, blockSize));
+            }
         }
     }
 }   
@@ -1231,6 +1359,9 @@ function drawBlocks(){
     });
     blocks.forEach((block) => {
         block.draw();
+    });
+    timedBlocks.forEach((timedBlock) => {
+        timedBlock.draw();
     });
     breakables.forEach((breakable) => {
         breakable.draw();
@@ -1259,9 +1390,10 @@ function drawBlocks(){
     bombs.forEach((bomb) => {
         bomb.draw(); 
     })
-    players.forEach((player) => {
-        player.draw();
-    });
+    mines.forEach((mine) => {
+        mine.draw(); 
+    })
+    player.draw();
     buttons.forEach((button) => {
         button.draw();
     });
@@ -1274,6 +1406,15 @@ function drawBlocks(){
     tunnels.forEach((tunnel) => {
         tunnel.draw();
     });
+}
+
+function decreaseTimedBlocks(){
+    for(let i = timedBlocks.length - 1; i >= 0; i--){
+        timedBlocks[i].time--;
+        if(timedBlocks[i].time <= 0){
+            timedBlocks.splice(i, 1);
+        }
+    }
 }
 
 function updateButtons(){
@@ -1319,7 +1460,6 @@ function updateBlocks(){
     if(keys.length === 0){
         locks = [];
     }
-    //updateButtons();
     for(let i = 0; i < crates.length; i++){
         if(crates[i].update(i)){
             i--;
@@ -1335,25 +1475,23 @@ function updateBlocks(){
             i--;
         };
     }
-    players.forEach((player) => {
-        player.update();
-    });
+    player.update();
 };
 
 let canClick = true;
 let canPressR = true;
 function drawAndCheckResetCharge(){
     c.drawImage(images.resetCharge, 10, 40, 20, 40)
-    if(players.length > 0){
+    if(!player.dead){
         if((mouse.leftClick && canClick)){
             if(mouse.x > 10 && mouse.x < 30 && mouse.y > 40 && mouse.y < 80){
-                if(!checkGoalCollisions(players[0]) && !players[0].isFirstMove){
+                if(!checkGoalCollisions(player) && !player.isFirstMove){
                     resetLevel();
                 }
             }
         }
         if(canPressR && key.r){
-            if(!checkGoalCollisions(players[0]) && !players[0].isFirstMove){
+            if(!checkGoalCollisions(player) && !player.isFirstMove){
                 resetLevel();
             }
         }
@@ -1372,7 +1510,7 @@ function drawAndCheckResetCharge(){
 
 function changePhaseBlocks(){
     phaseBlocks.forEach((phaseBlock) => {
-        if(!(checkPlayerCollisions(phaseBlock) || checkCrateCollisions(phaseBlock))){
+        if(!(checkPlayerCollisions(phaseBlock) || checkCrateCollisions(phaseBlock) || checkBombCollisions(phaseBlock))){
             phaseBlock.solid = !phaseBlock.solid;
         }
     })
@@ -1380,7 +1518,6 @@ function changePhaseBlocks(){
 
 function clearBlocks(){
     blocks = [];
-    players = [];
     goals = [];
     bubbles = [];
     crates = [];
@@ -1397,6 +1534,8 @@ function clearBlocks(){
     buttonBlocks = [];
     pressurePlateBlocks = [];
     pressurePlates = [];
+    mines = [];
+    timedBlocks = [];
 }
 
 function resetLevel(){
@@ -1439,7 +1578,7 @@ function gameLoop(){
     ctx.fillStyle = "black";
     ctx.fillRect(blockSize * levels[currentLevel].levelSize, 0, blockSize, 1200);
     ctx.fillRect(0, blockSize * levels[currentLevel].levelSize, 1200, blockSize);
-    if(players.length === 0){
+    if(player.dead){
         resetCountdown--;
         if(resetCountdown === 0){
             resetLevel();
@@ -1484,6 +1623,8 @@ function checkSolidCollisions(object){
         return true;
     } else if(checkPressurePlateBlockCollisions(object)){
         return true;
+    } else if(checkTimedBlockCollisions(object)){
+        return true;
     } else if(checkPressurePlateCollisions(object)){
         return true;
     } else if(checkBombCollisions(object)){
@@ -1519,6 +1660,15 @@ function checkTunnelCollisions(object){
 function checkBreakableCollisions(object){
     for(let i = 0; i < breakables.length; i++){
         if(isColliding(breakables[i], object)){
+            return true;
+        }
+    }
+    return false;
+}
+
+function checkTimedBlockCollisions(object){
+    for(let i = 0; i < timedBlocks.length; i++){
+        if(isColliding(timedBlocks[i], object)){
             return true;
         }
     }
@@ -1572,6 +1722,16 @@ function checkLockCollisions(object){
     return false;
 }
 
+function checkMineCollisions(object){
+    for(let i = 0; i < mines.length; i++){
+        if(Math.abs(object.x - mines[i].x) < Math.round(blockSize / 3) + 1 && Math.abs(object.y - mines[i].y) < Math.round(blockSize / 3) + 1){
+            mines.splice(i, 1);
+            return true;
+        }
+    }
+    return false;
+}
+
 function checkButtonCollisions(object){
     for(let i = 0; i < buttons.length; i++){
         if(isColliding(buttons[i], object)){
@@ -1584,8 +1744,26 @@ function checkButtonCollisions(object){
 
 function checkPressurePlateCollisions(object){
     for(let i = 0; i < pressurePlates.length; i++){
+        let oldX = pressurePlates[i].x;
+        let oldY = pressurePlates[i].y;
+        if(pressurePlates[i].dir === Math.PI){
+            pressurePlates[i].x--;
+        }
+        if(pressurePlates[i].dir === 0){
+            pressurePlates[i].x++;
+        }
+        if(pressurePlates[i].dir === Math.PI / 2){
+            pressurePlates[i].y--;
+        }
+        if(pressurePlates[i].dir === -Math.PI / 2){
+            pressurePlates[i].y++;
+        }
         if(isColliding(pressurePlates[i], object)){
             pressurePlates[i].pressed = true;
+        }
+        pressurePlates[i].x = oldX;
+        pressurePlates[i].y = oldY;
+        if(isColliding(pressurePlates[i], object)){
             return true;
         }
     }
@@ -1610,12 +1788,11 @@ function checkCrateCollisions(object){
 }
 
 function checkPlayerCollisions(object){
-    for(let i = 0; i < players.length; i++){
-        if(isColliding(players[i], object) && players[i].playerID !== object.playerID){
-            return true;
-        }
+    if(isColliding(player, object) && !object.isPlayer){
+        return true;
+    } else{
+        return false;
     }
-    return false;
 }
 
 function checkBubbleCollisions(object){
