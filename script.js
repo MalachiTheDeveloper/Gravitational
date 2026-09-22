@@ -75,7 +75,9 @@ let images = {
     pressurePlateBlock: new Image(),
     mine: new Image(),
     timedBlock: [],
-    winAnimation: new Image()
+    winAnimation: new Image(),
+    explosion: new Image(),
+    smallerExplosion: new Image()
 }
 for(let i = 0; i < 256; i++){
     images.blocks.push(new Image());
@@ -106,6 +108,8 @@ images.background.src = "Images/background.png";
 images.floor.src = "Images/floor.png";
 images.resetCharge.src = "Images/resetCharge.png";
 images.door.src = "Images/door.png";
+images.explosion.src = "Images/explosion.png";
+images.smallerExplosion.src = "Images/smallerExplosion.png";
 for(let i = 0; i < images.button.unpressed.length; i++){
     images.button.unpressed[i].src = "Images/button/unpressed" + (parseInt(i)+1).toString() + ".png";
 }
@@ -135,7 +139,7 @@ let gravityCharges = 0;
 let resetCountdown = 60;
 let canChangeGravity = true;
 
-let currentLevel = 15;
+let currentLevel = 10;
 let levels = {
     1: {
         levelSize: 6,
@@ -483,6 +487,7 @@ let pressurePlates = [];
 let pressurePlateBlocks = [];
 let mines = [];
 let timedBlocks = [];
+let explosions = [];
 
 class Player {
     constructor(x, y, width, height){
@@ -901,6 +906,7 @@ class Bomb {
         this.y -= blockSize;
         if(!this.exploded){
             this.exploded = true;
+            explosions.push(new Explosion(this.x, this.y, this.width, this.height));
         }
     }
 }
@@ -927,6 +933,26 @@ function changeBreakableIDs(id){
             breakable.breakableID--;
         }
     })
+}
+
+class Explosion{
+    constructor(x, y, width, height){
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.frame = 0;
+    }
+    draw(){
+        if(this.width > blockSize){
+            ctx.drawImage(images.explosion, Math.floor(this.frame / 3) * 48, 0, 48, 48, this.x, this.y, this.width, this.height);
+        } else{
+            ctx.drawImage(images.smallerExplosion, Math.floor(this.frame / 3) * 16, 0, 16, 16, this.x, this.y, this.width, this.height);
+        }
+    } 
+    update(){
+        this.frame++;
+    }
 }
 
 class Block {
@@ -1413,6 +1439,9 @@ function drawBlocks(){
     tunnels.forEach((tunnel) => {
         tunnel.draw();
     });
+    explosions.forEach((explosion) => {
+        explosion.draw();
+    });
 }
 
 function decreaseTimedBlocks(){
@@ -1482,6 +1511,9 @@ function updateBlocks(){
             i--;
         };
     }
+    explosions.forEach((explosion) => {
+        explosion.update();
+    });
     player.update();
 };
 
@@ -1543,6 +1575,7 @@ function clearBlocks(){
     pressurePlates = [];
     mines = [];
     timedBlocks = [];
+    explosions = [];
 }
 
 let curtainAlpha = 0;
@@ -1760,6 +1793,7 @@ function checkLockCollisions(object){
 function checkMineCollisions(object){
     for(let i = 0; i < mines.length; i++){
         if(Math.abs(object.x - mines[i].x) < Math.round(blockSize / 3) + 1 && Math.abs(object.y - mines[i].y) < Math.round(blockSize / 3) + 1){
+            explosions.push(new Explosion(mines[i].x, mines[i].y, mines[i].width, mines[i].height));
             mines.splice(i, 1);
             return true;
         }
