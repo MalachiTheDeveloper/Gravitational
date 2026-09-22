@@ -45,9 +45,7 @@ let images = {
     background: new Image(),
     floor: new Image(),
     resetCharge: new Image(),
-    door: {
-        closed: new Image(),
-    },
+    door: new Image(),
     robot: {
         idle: new Image(),
     },
@@ -76,7 +74,8 @@ let images = {
     pressedPressurePlate: new Image(),
     pressurePlateBlock: new Image(),
     mine: new Image(),
-    timedBlock: []
+    timedBlock: [],
+    winAnimation: new Image()
 }
 for(let i = 0; i < 256; i++){
     images.blocks.push(new Image());
@@ -88,6 +87,7 @@ for(let i = 1; i <= 50; i++){
     images.timedBlock[i-1].src = "Images/timedBlock/" + i + ".png";
 }
 
+images.winAnimation.src = "Images/winAnimation.png";
 images.title.src = "Images/title.png";
 images.logo.src = "Images/logo.png";
 images.player.src = "Images/player.png";
@@ -105,7 +105,7 @@ images.gravityCharge.src = "Images/gravityCharge.png";
 images.background.src = "Images/background.png";
 images.floor.src = "Images/floor.png";
 images.resetCharge.src = "Images/resetCharge.png";
-images.door.closed.src = "Images/door/closed.png";
+images.door.src = "Images/door.png";
 for(let i = 0; i < images.button.unpressed.length; i++){
     images.button.unpressed[i].src = "Images/button/unpressed" + (parseInt(i)+1).toString() + ".png";
 }
@@ -128,7 +128,6 @@ for(let i = 0; i < images.buttonBlock.length; i++){
     images.buttonBlock[i].src = "Images/buttonBlock/" + (parseInt(i)+1).toString() + ".png";
 }
 
-let doorFrame = "closed";
 let robotFrame = "idle";
 
 let gravity = [0, 0];
@@ -136,7 +135,7 @@ let gravityCharges = 0;
 let resetCountdown = 60;
 let canChangeGravity = true;
 
-let currentLevel = 1;
+let currentLevel = 15;
 let levels = {
     1: {
         levelSize: 6,
@@ -252,11 +251,11 @@ let levels = {
             "bb s   +  +   bb",
             "bb  b        ^^b",
             "b>s+    b   <bbb",
-            "b>   S     <bbbb",
+            "b>    S    <bbbb",
             "bbbb       <bbbb",
-            "bvvv+       <bbb",
+            "bvvv +      <bbb",
             "b        +  sS@b",
-            "b   s       bbbb",
+            "b    s      bbbb",
             "b>s    +      +b",
             "b   +     bbcb b",
             "b^         bcb b",
@@ -423,7 +422,7 @@ let levels = {
             "bbbbbbbbb",
         ]
     },
-    16: {
+    /*16: {
         levelSize: 29,
         gravityCharges: 100,
         buttonAssignments: [0],
@@ -460,7 +459,7 @@ let levels = {
             "bc     B     cb             b",
             "bbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         ]
-    } 
+    } */
 };
 
 let blockSize = Math.round(1200 / levels[currentLevel].levelSize);
@@ -503,19 +502,27 @@ class Player {
             s: true,
             d: true
         };
-        this.goalCountdown = 60;
+        this.goalCountdown = -1;
         this.shield = false;
         this.dead = false;
         this.isPlayer = true;
     }
     draw(){
         if(!this.dead){
-            ctx.drawImage(images.player, this.x, this.y, this.width, this.height)
-            if(this.shield){
-                ctx.fillStyle = "rgb(0,255,255)";
-                ctx.globalAlpha = 0.15;
-                ctx.fillRect(this.x, this.y, this.width, this.height);
-                ctx.globalAlpha = 1;
+            if(this.goalCountdown >= 9){
+                if(this.goalCountdown >= 39){
+                    ctx.drawImage(images.winAnimation, (14) * 16, 0, 16, 16, this.x, this.y, this.width, this.height)
+                } else{
+                    ctx.drawImage(images.winAnimation, (Math.floor((this.goalCountdown - 6) / 3)) * 16 , 0, 16, 16, this.x, this.y, this.width, this.height)
+                }
+            } else{
+                ctx.drawImage(images.player, this.x, this.y, this.width, this.height)
+                if(this.shield){
+                    ctx.fillStyle = "rgb(0,255,255)";
+                    ctx.globalAlpha = 0.15;
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                    ctx.globalAlpha = 1;
+                }
             }
         }
     }
@@ -638,8 +645,8 @@ class Player {
             if(checkGoalCollisions(this)){
                 this.x = checkGoalCollisions(this).x;
                 this.y = checkGoalCollisions(this).y;
-                this.goalCountdown--;
-                if(this.goalCountdown < 0){
+                this.goalCountdown++;
+                if(this.goalCountdown > 130){
                     currentLevel++;
                     if(currentLevel > Object.keys(levels).length){
                         gameOver = true;
@@ -1538,6 +1545,29 @@ function clearBlocks(){
     timedBlocks = [];
 }
 
+let curtainAlpha = 0;
+function drawCurtain(){
+    if(player.goalCountdown > 60){
+        curtainAlpha+=0.037;
+    } else{
+        curtainAlpha-=0.037;
+    }
+    if(curtainAlpha < 0){
+        curtainAlpha = 0;
+    }
+    if(curtainAlpha > 1){
+        curtainAlpha = 1;
+    }
+    c.globalAlpha = curtainAlpha;
+    ctx.globalAlpha = curtainAlpha;
+    c.fillStyle = "black";
+    ctx.fillStyle = "black";
+    c.fillRect(0,0,480,270);
+    ctx.fillRect(0,0,1200,1200);
+    c.globalAlpha = 1;
+    ctx.globalAlpha = 1;
+}
+
 function resetLevel(){
     gravity = [0, 0];
     blockSize = Math.round(1200 / levels[currentLevel].levelSize);
@@ -1563,14 +1593,18 @@ function drawLogo(){
     ctx.drawImage(images.logo,0,0,1200,1200);
     ctx.globalAlpha = 1;
 }
-
+let i = 0;
 function gameLoop(){
     c.clearRect(0,0,480,270);
     ctx.clearRect(0, 0, 1200, 1200);
     c.drawImage(images.background, 0, 0, 480, 270)
     c.drawImage(images.floor, 0, 215, 480, 40);
-    if(doorFrame === "closed"){
-        c.drawImage(images.door.closed, 400, 119, 64, 96)
+    if(player.goalCountdown >= 40 && player.goalCountdown <= 60){
+        c.drawImage(images.door, Math.floor((player.goalCountdown - 40) / 3) * 17 , 0, 17, 24, 400, 119, 64, 96);
+    } else if(player.goalCountdown < 60){
+        c.drawImage(images.door, 0, 0, 17, 24, 400, 119, 64, 96)
+    } else{
+        c.drawImage(images.door, 6 * 17 , 0, 17, 24, 400, 119, 64, 96);
     }
     if(robotFrame === "idle"){
         c.drawImage(images.robot.idle, 50, 135, 64, 80)
@@ -1593,6 +1627,7 @@ function gameLoop(){
     drawGravityCharges();
     updateBlocks();
     drawBlocks();
+    drawCurtain();
     drawLogo();
     requestAnimationFrame(gameLoop);
 }
@@ -1788,7 +1823,7 @@ function checkCrateCollisions(object){
 }
 
 function checkPlayerCollisions(object){
-    if(isColliding(player, object) && !object.isPlayer){
+    if(isColliding(player, object) && !object.isPlayer && !player.dead){
         return true;
     } else{
         return false;
