@@ -97,10 +97,25 @@
         smallerExplosion: new Image(),
         playButton: new Image(),
         crateParticle: new Image(),
+        breakableParticle: new Image(),
+        settingsButton: new Image(),
+        backButton: new Image(),
+        levelSelect: new Image(),
+        leftArrow: new Image(),
+        rightArrow: new Image(),
+        upArrow: new Image(),
+        downArrow: new Image(),
+        lockedLevel: new Image(),
+        levels: [],
     }
     for(let i = 0; i < 256; i++){
         images.blocks.push(new Image());
         images.blocks[i].src = "Images/blocks/" + i + ".png";
+    }
+
+    for(let i = 1; i <= 100; i++){
+        images.levels.push(new Image());
+        images.levels[i-1].src = "Images/levels/" + i + ".png";
     }
 
     for(let i = 1; i <= 50; i++){
@@ -108,7 +123,15 @@
         images.timedBlock[i-1].src = "Images/timedBlock/" + i + ".png";
     }
 
+    images.leftArrow.src = "Images/leftArrow.png";
+    images.rightArrow.src = "Images/rightArrow.png";
+    images.upArrow.src = "Images/upArrow.png";
+    images.downArrow.src = "Images/downArrow.png";
+    images.backButton.src = "Images/backButton.png";
+    images.settingsButton.src = "Images/settingsButton.png";
+    images.levelSelect.src = "Images/levelSelect.png";
     images.crateParticle.src = "Images/crateParticle.png";
+    images.breakableParticle.src = "Images/breakableParticle.png";
     images.winAnimation.src = "Images/winAnimation.png";
     images.title.src = "Images/title.png";
     images.logo.src = "Images/logo.png";
@@ -148,6 +171,7 @@
     images.pressedPressurePlate.src = "Images/pressedPressurePlate.png";
     images.pressurePlateBlock.src = "Images/pressurePlateBlock.png";
     images.mine.src = "Images/mine.png";
+    images.lockedLevel.src = "Images/lockedLevel.png";
 
     for(let i = 0; i < images.buttonBlock.length; i++){
         images.buttonBlock[i].src = "Images/buttonBlock/" + (parseInt(i)+1).toString() + ".png";
@@ -157,6 +181,7 @@
     let levelsUnlocked = 16;
 
     function startGame(level = levelsUnlocked){
+        gameOn = true;
         let gameOver = false;
 
         sounds.atmosphere.currentTime = 0;
@@ -279,23 +304,23 @@
             },
             6: {
                 levelSize: 16,
-                gravityCharges: 31,
+                gravityCharges: 28,
                 map:[
                     "bbbbbbbbbbbbbbbb",
                     "bbbbbbbbbbbbbbbb",
                     "bbvvvvbbvvvvvvbb",
-                    "bb s   +  +   bb",
+                    "bb+s   +  +   bb",
                     "bb  b        ^^b",
                     "b>s+    b   <bbb",
                     "b>    S    <bbbb",
                     "bbbb       <bbbb",
                     "bvvv +      <bbb",
-                    "b        +  sS@b",
+                    "b  +     +  sS@b",
                     "b    s      bbbb",
                     "b>s    +      +b",
                     "b   +     bbcb b",
                     "b^         bcb b",
-                    "bb>  s^^^^^bPb^b",
+                    "bb>+ s^^^^^bPb^b",
                     "bbbbbbbbbbbbbbbb",
                 ]
             },
@@ -627,8 +652,8 @@
                     if(checkSpikeCollisions(this) || checkBombCollisions(this).exploded || checkBarrierCollisions(this) === 1 || checkMineCollisions(this)){
                         if(!this.shield || checkSpikeCollisions(this)){
                             for(let i = 0; i < 40; i++){
-                            particles.push(new Particle(this.x + this.width / 2, this.y + this.height / 2, Math.floor(Math.random() * blockSize / 12) + blockSize / 10, Math.floor(Math.random() * blockSize / 12) + blockSize / 10, images.crateParticle, Math.random() * blockSize / 3 - blockSize / 6, Math.random() * blockSize / 3 - blockSize / 6, 0.99, 0.99, blockSize / 90, 1, -0.01));
-                        }
+                                particles.push(new Particle(this.x + this.width / 2, this.y + this.height / 2, Math.floor(Math.random() * blockSize / 12) + blockSize / 10, Math.floor(Math.random() * blockSize / 12) + blockSize / 10, images.crateParticle, Math.random() * blockSize / 3 - blockSize / 6, Math.random() * blockSize / 3 - blockSize / 6, 0.99, 0.99, blockSize / 90, 1, -0.01));
+                            }
                             this.dead = true;
                             sounds.break.currentTime = 0;
                             sounds.break.play();    
@@ -647,6 +672,11 @@
                         if(this.goalCountdown === 0){
                             sounds.win.currentTime = 0;
                             sounds.win.play();
+                            currentLevel++;
+                            if(!(currentLevel > Object.keys(levels).length) && currentLevel > levelsUnlocked){
+                                levelsUnlocked++;
+                            }
+                            currentLevel--;
                         }
                         if(this.goalCountdown === 40){
                             sounds.door.currentTime = 0;
@@ -1134,7 +1164,7 @@
                     ctx.drawImage(images.barrier, this.x, this.y, this.width, this.height);
                 } else{
                     ctx.globalAlpha = 0.5;
-                    ctx.drawImage(images.reverseBarrier, this.  x, this.y, this.width, this.height);
+                    ctx.drawImage(images.reverseBarrier, this.x, this.y, this.width, this.height);
                 }
                 ctx.globalAlpha = 1;
             }
@@ -1300,6 +1330,9 @@
             }
             update(){
                 if(checkBombCollisions(this).exploded){
+                    for(let i = 0; i < 10; i++){
+                        particles.push(new Particle(this.x + this.width / 2, this.y + this.height / 2, Math.floor(Math.random() * blockSize / 6) + blockSize / 5, Math.floor(Math.random() * blockSize / 6) + blockSize / 5, images.breakableParticle, Math.random() * blockSize / 3 - blockSize / 6, Math.random() * blockSize / 3 - blockSize / 6, 0.99, 0.99, blockSize / 90, 1, -0.01));
+                    }
                     breakables.splice(this.breakableID, 1);
                     changeBreakableIDs(this.breakableID);
                     return true;
@@ -1376,7 +1409,7 @@
             }
             draw(){
                 ctx.globalAlpha = this.alpha;
-                ctx.drawImage(images.crateParticle, this.x, this.y, this.width, this.height);
+                ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
                 ctx.globalAlpha = 1;
             }
             update(){        
@@ -1879,7 +1912,7 @@
                 curtainAlpha = 1;
             }
         }
-
+        
         function drawMainCanvas (){
             c.clearRect(0,0,480,270);
             c.drawImage(images.background, 0, 0, 480, 270);
@@ -1937,7 +1970,18 @@
             drawBlocks();
             drawCurtain();
             drawLogo();
-            gameLoopFrame = requestAnimationFrame(gameLoop);
+            if(menuButtons.length === 1){
+                menuButtons[0].draw();
+                menuButtons[0].update();
+                if(mouse.leftClick){
+                    canClickButtons = false;
+                } else{
+                    canClickButtons = true;
+                }
+            }
+            if(gameOn){
+                requestAnimationFrame(gameLoop);
+            }
             if(gameCanvas.style.display === "none"){
                 gameCanvas.style.display = "block";
             }
@@ -2196,7 +2240,18 @@
             }
         }
         resetLevel();
-        let gameLoopFrame = requestAnimationFrame(gameLoop);
+        requestAnimationFrame(gameLoop);
+        menuButtons = [];
+        menuButtons.push(new MenuButton(440, 10, 30, 30, images.backButton, () => {
+            gameOn = false;
+            menu = "title";
+            loadMenu();
+            sounds.atmosphere.pause();
+            sounds.atmosphere.currentTime = 0;
+            sounds.music.pause();
+            sounds.music.currentTime = 0;
+            requestAnimationFrame(titleLoop);
+        }));
     }
 
     function isColliding(first, second){
@@ -2303,8 +2358,8 @@
 
     let menuButtons = [];
 
-    class menuButton{
-        constructor(x, y, width, height, image, onPress){
+    class MenuButton{
+        constructor(x, y, width, height, image, onPress, active = true){
             this.x = x;
             this.y = y;
             this.width = width;
@@ -2318,18 +2373,20 @@
             this.targetX = x;
             this.targetY = y;
             this.targetWidth = width;
+            this.active = active;
         }
         draw(){
             c.drawImage(this.image,this.x,this.y,this.width,this.height)
         }
         update(){
-            if(isColliding(this, mouse)){
+            if(isColliding(this, mouse) && this.active){
                 this.targetX = this.defaultX - this.defaultWidth / 6;
                 this.targetY = this.defaultY - this.defaultHeight / 6;
                 this.targetWidth = this.defaultWidth + this.defaultWidth / 3;
                 this.targetHeight = this.defaultHeight + this.defaultHeight / 3;
-                if(mouse.leftClick){
+                if(mouse.leftClick && canClickButtons && this.active){
                     this.onPress();
+                    canClickButtons = false;
                 }
             } else{
                 this.targetX = this.defaultX;
@@ -2344,20 +2401,156 @@
         }
     }
 
-    menuButtons.push(new menuButton(210, 160, 60, 60, images.playButton, () => {
-        cancelAnimationFrame(title);
-        startGame(13);    
-        curtainAlpha = 1;   
-    }));
+    function loadMenu(){
+        menuButtons = [];
+        if(menu === "title"){
+            menuButtons.push(new MenuButton(210, 155, 60, 60, images.playButton, () => {
+                cancelAnimationFrame(title);
+                startGame(levelsUnlocked);    
+                curtainAlpha = 1;   
+            }));
+            menuButtons.push(new MenuButton(305, 160, 50, 50, images.settingsButton, () => {
+                menu = "settings";
+                loadMenu();
+            }));
+            menuButtons.push(new MenuButton(118, 230, 244, 32, images.levelSelect, () => {
+                menu = "levelSelect1";
+                loadMenu();
+            }));
+            menuButtons.push(new MenuButton(125, 160, 50, 50, images.backButton, () => {
 
+            }));
+        }
+        if(menu === "settings"){
+            menuButtons.push(new MenuButton(15, 15, 30, 30, images.backButton, () => {
+                menu = "title";
+                loadMenu();
+            }));
+        }
+        if(menu === "levelSelect1"){
+            menuButtons.push(new MenuButton(15, 15, 30, 30, images.backButton, () => {
+                menu = "title";
+                loadMenu();
+            }));
+            menuButtons.push(new MenuButton(432, 230, 40, 32, images.rightArrow, () => {
+                menu = "levelSelect2";
+                loadMenu();
+            }));
+            for(let i = 0; i < 5; i++){
+                for(let j = 0; j < 5; j++){
+                    if(j * 5 + i + 1 <= levelsUnlocked){
+                        menuButtons.push(new MenuButton(i * 70 + 75, j * 50 + 15, 40, 40, images.levels[j * 5 + i], () => {
+                            cancelAnimationFrame(title);
+                            startGame(j * 5 + i + 1);        
+                            curtainAlpha = 1; 
+                        }, true));
+                    } else{
+                        menuButtons.push(new MenuButton(i * 70 + 75, j * 50 + 15, 40, 40, images.lockedLevel, () => {}, false));
+                    }
+                }
+            }
+        }
+        if(menu === "levelSelect2"){
+            menuButtons.push(new MenuButton(15, 15, 30, 30, images.backButton, () => {
+                menu = "title";
+                loadMenu();
+            }));
+            menuButtons.push(new MenuButton(8, 230, 40, 32, images.leftArrow, () => {
+                menu = "levelSelect1";
+                loadMenu();
+            }));
+            menuButtons.push(new MenuButton(432, 230, 40, 32, images.rightArrow, () => {
+                menu = "levelSelect3";
+                loadMenu();
+            }));
+            for(let i = 0; i < 5; i++){
+                for(let j = 0; j < 5; j++){
+                    if(j * 5 + i + 26 <= levelsUnlocked){
+                        menuButtons.push(new MenuButton(i * 70 + 75, j * 50 + 15, 40, 40, images.levels[j * 5 + i + 25], () => {
+                            cancelAnimationFrame(title);
+                            startGame(j * 5 + i + 26);        
+                            curtainAlpha = 1; 
+                        }, true));
+                    } else{
+                        menuButtons.push(new MenuButton(i * 70 + 75, j * 50 + 15, 40, 40, images.lockedLevel, () => {}, false));
+                    }
+                }
+            }
+        }
+        if(menu === "levelSelect3"){
+            menuButtons.push(new MenuButton(15, 15, 30, 30, images.backButton, () => {
+                menu = "title";
+                loadMenu();
+            }));
+            menuButtons.push(new MenuButton(8, 230, 40, 32, images.leftArrow, () => {
+                menu = "levelSelect2";
+                loadMenu();
+            }));
+            menuButtons.push(new MenuButton(432, 230, 40, 32, images.rightArrow, () => {
+                menu = "levelSelect4";
+                loadMenu();
+            }));
+            for(let i = 0; i < 5; i++){
+                for(let j = 0; j < 5; j++){
+                    if(j * 5 + i + 51 <= levelsUnlocked){
+                        menuButtons.push(new MenuButton(i * 70 + 75, j * 50 + 15, 40, 40, images.levels[j * 5 + i + 50], () => {
+                            cancelAnimationFrame(title);
+                            startGame(j * 5 + i + 51);        
+                            curtainAlpha = 1; 
+                        }, true));
+                    } else{
+                        menuButtons.push(new MenuButton(i * 70 + 75, j * 50 + 15, 40, 40, images.lockedLevel, () => {}, false));
+                    }
+                }
+            }
+        }
+        if(menu === "levelSelect4"){
+            menuButtons.push(new MenuButton(15, 15, 30, 30, images.backButton, () => {
+                menu = "title";
+                loadMenu();
+            }));
+            menuButtons.push(new MenuButton(8, 230, 40, 32, images.leftArrow, () => {
+                menu = "levelSelect3";
+                loadMenu();
+            }));
+            for(let i = 0; i < 5; i++){
+                for(let j = 0; j < 5; j++){
+                    if(j * 5 + i + 76 <= levelsUnlocked){
+                        menuButtons.push(new MenuButton(i * 70 + 75, j * 50 + 15, 40, 40, images.levels[j * 5 + i + 75], () => {
+                            cancelAnimationFrame(title);
+                            startGame(j * 5 + i + 76);        
+                            curtainAlpha = 1; 
+                        }, true));
+                    } else{
+                        menuButtons.push(new MenuButton(i * 70 + 75, j * 50 + 15, 40, 40, images.lockedLevel, () => {}, false));
+                    }
+                }
+            }
+        }
+    }
+    
+    let canClickButtons;
     let title;
+    let menu = "title";
+    loadMenu();
     function titleLoop(){
+        if(gameCanvas.style.display = "block"){
+            gameCanvas.style.display = "none";
+        }
+        gameCanvas.style.display = "none";
         title = requestAnimationFrame(titleLoop);
         c.clearRect(0,0,480,270);
-        c.drawImage(images.title, 30, 60, 460, 92);
+        if(menu === "title"){
+            c.drawImage(images.title, 30, 60, 460, 92);
+        }
         for(let i = 0; i < menuButtons.length; i++){
             menuButtons[i].draw();
             menuButtons[i].update();
+        }
+        if(mouse.leftClick){
+            canClickButtons = false;
+        } else{
+            canClickButtons = true;
         }
         //c.drawImage(images.playButton, 210, 160, 60, 60);
     }
